@@ -196,6 +196,7 @@ class RqtHandeyeCalibratorWidget(QWidget):
 
         self._current_transforms = new_transforms
 
+            
         return robot_is_moving or tracking_is_moving
 
     def _updateUI(self):
