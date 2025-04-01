@@ -9,6 +9,7 @@ from easy_handeye2.handeye_client import HandeyeClient
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import QTimer
 from python_qt_binding.QtWidgets import QWidget
+from std_srvs.srv import Trigger
 
 
 def format_sample(sample):
@@ -28,6 +29,12 @@ class RqtHandeyeCalibratorWidget(QWidget):
         self._node = context.node
         self.parameters_provider = HandeyeCalibrationParametersProvider(self._node)
         self.parameters = self.parameters_provider.read()
+
+        # Create a service using the existing node
+        self.sample_service = self._node.create_service(Trigger, "take_sample", self.take_sample_callback)
+        self.sample_service = self._node.create_service(Trigger, "is_take_sample_allowed", self.is_take_sample_allowed_callback)
+        self.save_calibration_service = self._node.create_service(Trigger, "save_calibration", self.save_calibration_callback)
+        self.save_calibration_service = self._node.create_service(Trigger, "is_save_calibration_allowd", self.is_save_calibration_allowed_callback)
 
         self._current_transforms = None
 
@@ -102,6 +109,50 @@ class RqtHandeyeCalibratorWidget(QWidget):
         self._update_ui_timer.timeout.connect(self._updateUI)
         self._update_ui_timer.start(100)
 
+    def save_calibration_callback(self, request, response):
+        """Callback function for the 'save_calibration' service."""
+        print("save_calibration_callback")
+        self.handle_save_calibration()
+        response.success = True
+        response.message = "Calibration saved successfully"
+        return response
+    
+    def is_take_sample_allowed_callback(self, request, response):
+        is_take_sample_enabled = self.is_take_sample_enabled()
+        if not is_take_sample_enabled:
+            response.success = False
+            response.message = "take_sample is not allowed"
+            return response
+        else:
+            response.success = True
+            response.message = "take_sample is allowed"
+            return response
+        
+    def is_save_calibration_allowed_callback(self, request, response):
+        is_save_allowed = self.is_save_allowed()
+        if not is_save_allowed:
+            response.success = False
+            response.message = "save_calibration is not allowed"
+            return response
+        else:
+            response.success = True
+            response.message = "save_calibration is allowed"
+            return response
+
+    def take_sample_callback(self, request, response):
+        is_take_sample_enabled = self.is_take_sample_enabled()
+        if not is_take_sample_enabled:
+            response.success = False
+            response.message = "Robot is moving"
+            return response
+        
+        print ("take_sample_callback")
+        """Callback function for the service."""
+        self.handle_take_sample()
+        response.success = True
+        response.message = "Sample taken successfully"
+        return response
+    
     def shutdown(self):
         self._update_ui_timer.stop()
 
@@ -198,9 +249,24 @@ class RqtHandeyeCalibratorWidget(QWidget):
 
         return robot_is_moving or tracking_is_moving
 
-    def _updateUI(self):
+
+    def is_take_sample_enabled(self):
+        # Check if the robot is moving
         new_transforms = self.client.get_current_transforms()
-        if new_transforms is None or self._check_still_moving(new_transforms):
+        if new_transforms is None:
+            return False
+
+        # Check if the robot is still moving
+        if self._check_still_moving(new_transforms):
+            return False
+
+        # If the robot is not moving, enable the take sample button
+        return True
+    
+
+    def _updateUI(self):
+        is_take_sample_enabled = self.is_take_sample_enabled()
+        if is_take_sample_enabled:
             self._widget.takeButton.setEnabled(False)
         else:
             self._widget.takeButton.setEnabled(True)
@@ -217,21 +283,32 @@ class RqtHandeyeCalibratorWidget(QWidget):
         self._display_sample_list(sample_list)
         self._widget.saveButton.setEnabled(False)
 
-    def handle_compute_calibration(self):
+    def is_save_allowed(self):
+        """Checks if the save operation is allowed based on calibration results."""
         if len(self.client.get_sample_list().samples) > 2:
             result = self.client.compute_calibration()
             if result.valid:
                 tr = result.calibration.transform.translation
                 qt = result.calibration.transform.rotation
-                t = f'Translation\n\tx: {tr.x:.6f}\n\ty: {tr.y:.6f}\n\tz: {tr.z:.6f})\nRotation\n\tx: {qt.x:.6f}\n\ty: {qt.y:.6f}\n\tz: {qt.z:.6f}\n\tw: {qt.w:.6f}'
+                t = (f'Translation\n\tx: {tr.x:.6f}\n\ty: {tr.y:.6f}\n\tz: {tr.z:.6f})\n'
+                     f'Rotation\n\tx: {qt.x:.6f}\n\ty: {qt.y:.6f}\n\tz: {qt.z:.6f}\n\tw: {qt.w:.6f}')
                 self._widget.outputBox.setPlainText(t)
-                self._widget.saveButton.setEnabled(True)
+                return True  # Save is allowed, return True
             else:
                 self._widget.outputBox.setPlainText('The calibration could not be computed')
-                self._widget.saveButton.setEnabled(False)
+                return False  # Calibration failed, return False
         else:
-            self._widget.outputBox.setPlainText('Too few samples, the calibration cannot not be computed')
+            self._widget.outputBox.setPlainText('Too few samples, the calibration cannot be computed')
+            return False  # Not enough samples, return False
+        
+    def handle_compute_calibration(self):
+        """Handles the computation of calibration and updates the UI accordingly."""
+        # Use is_save_allowed to determine if the save button should be enabled
+        if self.is_save_allowed():
+            self._widget.saveButton.setEnabled(True)
+        else:
             self._widget.saveButton.setEnabled(False)
+            
 
     def handle_save_calibration(self):
         self.client.save()
