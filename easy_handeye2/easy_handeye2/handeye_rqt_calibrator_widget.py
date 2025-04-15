@@ -31,10 +31,10 @@ class RqtHandeyeCalibratorWidget(QWidget):
         self.parameters = self.parameters_provider.read()
 
         # Create a service using the existing node
-        self.sample_service = self._node.create_service(Trigger, "take_sample", self.take_sample_callback)
-        self.sample_service = self._node.create_service(Trigger, "is_take_sample_allowed", self.is_take_sample_allowed_callback)
-        self.save_calibration_service = self._node.create_service(Trigger, "save_calibration", self.save_calibration_callback)
-        self.save_calibration_service = self._node.create_service(Trigger, "is_save_calibration_allowd", self.is_save_calibration_allowed_callback)
+        # self.sample_service = self._node.create_service(Trigger, "take_sample", self.take_sample_callback)
+        # self.sample_service = self._node.create_service(Trigger, "is_take_sample_allowed", self.is_take_sample_allowed_callback)
+        # self.save_calibration_service = self._node.create_service(Trigger, "save_calibration", self.save_calibration_callback)
+        # self.save_calibration_service = self._node.create_service(Trigger, "is_save_calibration_allowd", self.is_save_calibration_allowed_callback)
 
         self._current_transforms = None
 
@@ -234,19 +234,45 @@ class RqtHandeyeCalibratorWidget(QWidget):
 
         translation_has_moved = RqtHandeyeCalibratorWidget._translation_distance(t1, t2) > TRANSLATION_TOLERANCE_M
         rotation_has_moved = RqtHandeyeCalibratorWidget._rotation_distance(t1, t2) > ROTATION_TOLERANCE_RAD
+
+        return translation_has_moved or rotation_has_moved
+
+    def _has_moved2(self,t1, t2):
+        TRANSLATION_TOLERANCE_M = 0.003
+        ROTATION_TOLERANCE_RAD = math.radians(3)
+
+        trans_distance = RqtHandeyeCalibratorWidget._translation_distance(t1, t2)
+        rot_distance = RqtHandeyeCalibratorWidget._rotation_distance(t1, t2)
+
+        translation_has_moved = RqtHandeyeCalibratorWidget._translation_distance(t1, t2) > TRANSLATION_TOLERANCE_M
+        rotation_has_moved = RqtHandeyeCalibratorWidget._rotation_distance(t1, t2) > ROTATION_TOLERANCE_RAD
+
+        if translation_has_moved:
+            self._node.get_logger().info('translation has moved ' + str(trans_distance) + " " + str(TRANSLATION_TOLERANCE_M) + " " + str(trans_distance - TRANSLATION_TOLERANCE_M))
+
+        if rotation_has_moved:   
+            self._node.get_logger().info('rotation has moved ' + str(rot_distance) + " " + str(ROTATION_TOLERANCE_RAD) + " " + str(rot_distance - ROTATION_TOLERANCE_RAD))
         return translation_has_moved or rotation_has_moved
 
     def _check_still_moving(self, new_transforms):
+        
         if self._current_transforms is None:
             self._current_transforms = new_transforms
+            self._node.get_logger().info('sample disabled -No previous transforms')
             return False
 
         robot_is_moving = RqtHandeyeCalibratorWidget._has_moved(new_transforms.robot, self._current_transforms.robot)
-        tracking_is_moving = RqtHandeyeCalibratorWidget._has_moved(new_transforms.tracking,
-                                                                   self._current_transforms.tracking)
+        # tracking_is_moving = RqtHandeyeCalibratorWidget._has_moved(new_transforms.tracking,
+        #                                                            self._current_transforms.tracking)
+
+        tracking_is_moving = self._has_moved2(new_transforms.tracking,self._current_transforms.tracking)
+
 
         self._current_transforms = new_transforms
-
+        if robot_is_moving:
+            self._node.get_logger().info('sample disabled -Robot is moving')
+        if tracking_is_moving:
+            self._node.get_logger().info('sample disabled -Tracking is moving')
         return robot_is_moving or tracking_is_moving
 
 
@@ -254,10 +280,12 @@ class RqtHandeyeCalibratorWidget(QWidget):
         # Check if the robot is moving
         new_transforms = self.client.get_current_transforms()
         if new_transforms is None:
+            self._node.get_logger().info('sample disabled -Failed to get the current transforms')
             return False
 
         # Check if the robot is still moving
         if self._check_still_moving(new_transforms):
+            # self._node.get_logger().info('sample disabled -Robot is still moving')
             return False
 
         # If the robot is not moving, enable the take sample button
@@ -267,9 +295,9 @@ class RqtHandeyeCalibratorWidget(QWidget):
     def _updateUI(self):
         is_take_sample_enabled = self.is_take_sample_enabled()
         if is_take_sample_enabled:
-            self._widget.takeButton.setEnabled(False)
-        else:
             self._widget.takeButton.setEnabled(True)
+        else:
+            self._widget.takeButton.setEnabled(False)
 
     def handle_take_sample(self):
         sample_list = self.client.take_sample()

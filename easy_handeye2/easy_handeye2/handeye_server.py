@@ -49,7 +49,7 @@ class HandeyeServer(rclpy.node.Node):
         if not self.sampler.wait_for_tf_init():
             self.get_logger().warn('Waiting for TF initialization...')
             return
-
+        self.get_logger().info('HandEye Server: setting up services and topics')
         self.list_algorithms_service = self.create_service(ehm.srv.ListAlgorithms, hec.LIST_ALGORITHMS_TOPIC,
                                                            self.list_algorithms)
         self.set_algorithm_service = self.create_service(ehm.srv.SetAlgorithm, hec.SET_ALGORITHM_TOPIC,
@@ -124,8 +124,10 @@ class HandeyeServer(rclpy.node.Node):
         return response
 
     def take_sample_srv_callback(self, _, response: ehm.srv.TakeSample.Response):
+        self.get_logger().info('Taking sample!!!!')
         self.sampler.take_sample()
         response.samples = self._retrieve_sample_list()
+        self.get_logger().info('Sample Taken, retuning response')
         return response
 
     def take_sample_msg_callback(self, _):
