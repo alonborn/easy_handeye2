@@ -13,6 +13,7 @@ from easy_handeye2.handeye_calibration import save_calibration, HandeyeCalibrati
 from easy_handeye2.handeye_calibration_backend_opencv import HandeyeCalibrationBackendOpenCV
 from easy_handeye2.handeye_sampler import HandeyeSampler
 
+import debugpy
 
 class HandeyeServer(rclpy.node.Node):
     def __init__(self):
@@ -73,6 +74,7 @@ class HandeyeServer(rclpy.node.Node):
         # Useful for secondary input sources (e.g. programmable buttons on robot)
         self.take_sample_topic = self.create_subscription(std_msgs.msg.Empty, hec.TAKE_SAMPLE_TOPIC, self.take_sample_msg_callback,
                                                           10)
+        self.get_logger().info('take sample topic created')
         self.remove_last_sample_topic = self.create_subscription(std_msgs.msg.Empty, hec.REMOVE_SAMPLE_TOPIC,
                                                                   self.remove_last_sample, 10)
         self.setup_timer.cancel()
@@ -163,6 +165,8 @@ class HandeyeServer(rclpy.node.Node):
     # calibration
 
     def compute_calibration(self, _, response: ehm.srv.ComputeCalibration.Response):
+        self.get_logger().info('Computing calibration')
+
         samples = self.sampler.get_samples()
 
         bckname, algname = self.calibration_algorithm.split('/')
@@ -194,6 +198,12 @@ class HandeyeServer(rclpy.node.Node):
 
 
 def main(args=None):
+
+    # debugpy.listen(("localhost", 5678))  # Port for debugger to connect
+    # print("Waiting for debugger to attach...")
+    # debugpy.wait_for_client()  # Ensures the debugger connects before continuing
+    # print("Debugger connected.")
+
     rclpy.init(args=args)
 
     handeye_server = HandeyeServer()
