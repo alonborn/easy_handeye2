@@ -30,12 +30,6 @@ class RqtHandeyeCalibratorWidget(QWidget):
         self.parameters_provider = HandeyeCalibrationParametersProvider(self._node)
         self.parameters = self.parameters_provider.read()
 
-        # Create a service using the existing node
-        # self.sample_service = self._node.create_service(Trigger, "take_sample", self.take_sample_callback)
-        # self.sample_service = self._node.create_service(Trigger, "is_take_sample_allowed", self.is_take_sample_allowed_callback)
-        # self.save_calibration_service = self._node.create_service(Trigger, "save_calibration", self.save_calibration_callback)
-        # self.save_calibration_service = self._node.create_service(Trigger, "is_save_calibration_allowd", self.is_save_calibration_allowed_callback)
-
         self._current_transforms = None
 
         # Process standalone plugin command-line arguments
