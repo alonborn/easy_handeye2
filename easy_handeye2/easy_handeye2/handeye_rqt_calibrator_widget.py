@@ -241,18 +241,18 @@ class RqtHandeyeCalibratorWidget(QWidget):
         translation_has_moved = RqtHandeyeCalibratorWidget._translation_distance(t1, t2) > TRANSLATION_TOLERANCE_M
         rotation_has_moved = RqtHandeyeCalibratorWidget._rotation_distance(t1, t2) > ROTATION_TOLERANCE_RAD
 
-        if translation_has_moved:
-            self._node.get_logger().info('translation has moved ' + str(trans_distance) + " " + str(TRANSLATION_TOLERANCE_M) + " " + str(trans_distance - TRANSLATION_TOLERANCE_M))
+        # if translation_has_moved:
+        #     self._node.get_logger().info('translation has moved ' + str(trans_distance) + " " + str(TRANSLATION_TOLERANCE_M) + " " + str(trans_distance - TRANSLATION_TOLERANCE_M))
 
-        if rotation_has_moved:   
-            self._node.get_logger().info('rotation has moved ' + str(rot_distance) + " " + str(ROTATION_TOLERANCE_RAD) + " " + str(rot_distance - ROTATION_TOLERANCE_RAD))
+        # if rotation_has_moved:   
+        #     self._node.get_logger().info('rotation has moved ' + str(rot_distance) + " " + str(ROTATION_TOLERANCE_RAD) + " " + str(rot_distance - ROTATION_TOLERANCE_RAD))
         return translation_has_moved or rotation_has_moved
 
     def _check_still_moving(self, new_transforms):
         
         if self._current_transforms is None:
             self._current_transforms = new_transforms
-            self._node.get_logger().info('sample disabled -No previous transforms')
+            #self._node.get_logger().info('sample disabled -No previous transforms')
             return False
 
         robot_is_moving = RqtHandeyeCalibratorWidget._has_moved(new_transforms.robot, self._current_transforms.robot)
@@ -263,10 +263,10 @@ class RqtHandeyeCalibratorWidget(QWidget):
 
 
         self._current_transforms = new_transforms
-        if robot_is_moving:
-            self._node.get_logger().info('sample disabled -Robot is moving')
-        if tracking_is_moving:
-            self._node.get_logger().info('sample disabled -Tracking is moving')
+        # if robot_is_moving:
+        #     self._node.get_logger().info('sample disabled -Robot is moving')
+        # if tracking_is_moving:
+        #     self._node.get_logger().info('sample disabled -Tracking is moving')
         return robot_is_moving or tracking_is_moving
 
 
@@ -274,7 +274,7 @@ class RqtHandeyeCalibratorWidget(QWidget):
         # Check if the robot is moving
         new_transforms = self.client.get_current_transforms()
         if new_transforms is None:
-            self._node.get_logger().info('sample disabled -Failed to get the current transforms')
+            #self._node.get_logger().info('sample disabled -Failed to get the current transforms')
             return False
 
         # Check if the robot is still moving

@@ -79,18 +79,21 @@ class HandeyeCalibrationBackendOpenCV(object):
         node.get_logger().info("Computing from %g poses..." % len(samples.samples))
 
         method = HandeyeCalibrationBackendOpenCV.AVAILABLE_ALGORITHMS[algorithm]
+        try:
+            hand_camera_rot, hand_camera_tr = cv2.calibrateHandEye(hand_world_rot, hand_world_tr, marker_camera_rot,
+                                                                marker_camera_tr, method=method)
+            result = tfs.affines.compose(np.squeeze(hand_camera_tr), hand_camera_rot, [1, 1, 1])
 
-        hand_camera_rot, hand_camera_tr = cv2.calibrateHandEye(hand_world_rot, hand_world_tr, marker_camera_rot,
-                                                               marker_camera_tr, method=method)
-        result = tfs.affines.compose(np.squeeze(hand_camera_tr), hand_camera_rot, [1, 1, 1])
+            node.get_logger().info("Computed calibration: {}".format(str(result)))
+            (hcqw, hcqx, hcqy, hcqz) = [float(i) for i in tfs.quaternions.mat2quat(hand_camera_rot)]
+            (hctx, hcty, hctz) = [float(i) for i in hand_camera_tr]
 
-        node.get_logger().info("Computed calibration: {}".format(str(result)))
-        (hcqw, hcqx, hcqy, hcqz) = [float(i) for i in tfs.quaternions.mat2quat(hand_camera_rot)]
-        (hctx, hcty, hctz) = [float(i) for i in hand_camera_tr]
+            result = Transform(translation=Vector3(x=hctx, y=hcty, z=hctz),
+                            rotation=Quaternion(x=hcqx, y=hcqy, z=hcqz, w=hcqw))
 
-        result = Transform(translation=Vector3(x=hctx, y=hcty, z=hctz),
-                           rotation=Quaternion(x=hcqx, y=hcqy, z=hcqz, w=hcqw))
+            ret = HandeyeCalibration(parameters=handeye_parameters, transform=result)
 
-        ret = HandeyeCalibration(parameters=handeye_parameters, transform=result)
-
-        return ret
+            return ret
+        except Exception as e:
+            node.get_logger().err("OpenCV backend failed to compute calibration: {}".format(e))
+            return
