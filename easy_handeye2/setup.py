@@ -22,7 +22,10 @@ setup(
  maintainer_email='esposito@imfusion.com',
  description='Simple, hardware-independent ROS2 library for hand-eye calibration',
  license='BSD',
- tests_require=['pytest'],
+ 
+ extras_require={
+    'test': ['pytest'],
+  },
  entry_points={
      'console_scripts': [
                 'handeye_server = easy_handeye2.handeye_server:main',
